@@ -26,7 +26,8 @@ const TextToSpeechApp = () => {
     isLoading, 
     error, 
     history, 
-    isSpeaking 
+    isSpeaking,
+    currentAudioUrl
   } = useTTS();
   
   const { toast } = useToast();
@@ -127,6 +128,7 @@ const TextToSpeechApp = () => {
                     isPlaying={isSpeaking}
                     onPlay={handleGenerate}
                     onPause={handleStopSpeech}
+                    audioSrc={currentAudioUrl || undefined}
                   />
                   
                   <Button 

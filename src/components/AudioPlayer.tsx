@@ -11,13 +11,15 @@ interface AudioPlayerProps {
   onPlay: () => void;
   onPause: () => void;
   className?: string;
+  audioSrc?: string; // Added audioSrc prop to access the audio data
 }
 
 const AudioPlayer = ({ 
   isGenerating, 
   isPlaying, 
   onPlay, 
-  onPause, 
+  onPause,
+  audioSrc,
   className 
 }: AudioPlayerProps) => {
   const { toast } = useToast();
@@ -31,9 +33,26 @@ const AudioPlayer = ({
   };
   
   const handleDownload = () => {
+    if (!audioSrc) {
+      toast({
+        title: "No audio available",
+        description: "Please generate audio first before downloading.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create a temporary anchor element
+    const downloadLink = document.createElement('a');
+    downloadLink.href = audioSrc;
+    downloadLink.download = `speech-${Date.now()}.mp3`; // Name the downloaded file
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+
     toast({
-      title: "Download not available",
-      description: "Audio download is not implemented in this demo version.",
+      title: "Download started",
+      description: "Your audio file is being downloaded.",
       variant: "default",
     });
   };
@@ -77,7 +96,7 @@ const AudioPlayer = ({
         <Button
           size="icon"
           variant="outline"
-          disabled={isGenerating || !isPlaying}
+          disabled={isGenerating || !audioSrc}
           onClick={handleDownload}
           className="w-10 h-10 rounded-full shadow-sm transition-all duration-300 hover:shadow-md"
         >

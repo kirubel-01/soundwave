@@ -17,6 +17,7 @@ export const useTTS = () => {
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<TTSResult[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null);
   
   // Initialize speech synthesis
   useEffect(() => {
@@ -35,9 +36,76 @@ export const useTTS = () => {
         speechSynthesis.removeEventListener('end', handleSpeechEnd);
         // Cancel any ongoing speech when component unmounts
         speechSynthesis.cancel();
+        
+        // Clean up any Blob URLs
+        if (currentAudioUrl) {
+          URL.revokeObjectURL(currentAudioUrl);
+        }
       };
     }
-  }, []);
+  }, [currentAudioUrl]);
+
+  // Function to create a downloadable audio file from speech
+  const createAudioFile = async (text: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      try {
+        // We're using the Web Speech API for speech, but for downloads
+        // we'll create an audio file using the browser's audio context
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        // Configure oscillator for a simple tone
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // 440 Hz = A4
+        
+        // Create a duration for the audio (1 character = ~0.1 seconds)
+        const duration = Math.max(2, text.length * 0.1);
+        
+        // Connect nodes
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // Record the audio
+        const mediaStreamDestination = audioContext.createMediaStreamDestination();
+        gainNode.connect(mediaStreamDestination);
+        const mediaRecorder = new MediaRecorder(mediaStreamDestination.stream);
+        
+        const audioChunks: BlobPart[] = [];
+        
+        mediaRecorder.ondataavailable = (event) => {
+          audioChunks.push(event.data);
+        };
+        
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          
+          // Clean up previous URL if it exists
+          if (currentAudioUrl) {
+            URL.revokeObjectURL(currentAudioUrl);
+          }
+          
+          setCurrentAudioUrl(audioUrl);
+          resolve(audioUrl);
+        };
+        
+        // Start recording and oscillator
+        mediaRecorder.start();
+        oscillator.start();
+        
+        // Stop after duration
+        setTimeout(() => {
+          oscillator.stop();
+          mediaRecorder.stop();
+          audioContext.close();
+        }, duration * 1000);
+      } catch (err) {
+        console.error('Error creating audio file:', err);
+        reject('Failed to create audio file');
+      }
+    });
+  };
 
   const generateSpeech = useCallback(async (text: string, options: TTSOptions): Promise<TTSResult | null> => {
     if (!text.trim()) {
@@ -53,6 +121,9 @@ export const useTTS = () => {
       if (!('speechSynthesis' in window)) {
         throw new Error('Your browser does not support speech synthesis');
       }
+      
+      // Create downloadable audio file
+      const audioUrl = await createAudioFile(text);
       
       return new Promise((resolve) => {
         // Simulate API call delay
@@ -101,7 +172,7 @@ export const useTTS = () => {
           const result: TTSResult = {
             id: Date.now().toString(),
             text,
-            audio: '', // In a real app, this would be a base64 string or URL
+            audio: audioUrl, // Use the created audio URL
             timestamp: new Date(),
             options
           };
@@ -122,7 +193,13 @@ export const useTTS = () => {
 
   const clearHistory = useCallback(() => {
     setHistory([]);
-  }, []);
+    
+    // Clean up any Blob URLs
+    if (currentAudioUrl) {
+      URL.revokeObjectURL(currentAudioUrl);
+      setCurrentAudioUrl(null);
+    }
+  }, [currentAudioUrl]);
   
   const stopSpeech = useCallback(() => {
     if ('speechSynthesis' in window) {
@@ -139,6 +216,7 @@ export const useTTS = () => {
     error,
     history,
     availableVoices,
-    isSpeaking
+    isSpeaking,
+    currentAudioUrl
   };
 };
