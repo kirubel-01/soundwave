@@ -20,15 +20,22 @@ const TextToSpeechApp = () => {
   const [pitch, setPitch] = useState(1.0);
   const [activeTab, setActiveTab] = useState('convert');
   
-  const { generateSpeech, isLoading, error, history } = useTTS();
+  const { 
+    generateSpeech, 
+    stopSpeech, 
+    isLoading, 
+    error, 
+    history, 
+    isSpeaking 
+  } = useTTS();
+  
   const { toast } = useToast();
   
+  // Initialize Speech Synthesis
   useEffect(() => {
-    // Load speech synthesis voices if needed
     if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.onvoiceschanged = () => {
-        window.speechSynthesis.getVoices();
-      };
+      // Force prefetch voices
+      window.speechSynthesis.getVoices();
     }
   }, []);
   
@@ -56,6 +63,10 @@ const TextToSpeechApp = () => {
         description: "Your text has been converted to speech.",
       });
     }
+  };
+  
+  const handleStopSpeech = () => {
+    stopSpeech();
   };
   
   const handleReplay = (item: TTSResult) => {
@@ -113,7 +124,9 @@ const TextToSpeechApp = () => {
                 <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <AudioPlayer
                     isGenerating={isLoading}
+                    isPlaying={isSpeaking}
                     onPlay={handleGenerate}
+                    onPause={handleStopSpeech}
                   />
                   
                   <Button 

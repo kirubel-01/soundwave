@@ -1,43 +1,60 @@
 
-import React, { useState } from 'react';
-import { Play, Pause, Volume2, Download } from 'lucide-react';
+import React from 'react';
+import { Play, Pause, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
 
 interface AudioPlayerProps {
   isGenerating: boolean;
+  isPlaying: boolean;
   onPlay: () => void;
+  onPause: () => void;
   className?: string;
 }
 
-const AudioPlayer = ({ isGenerating, onPlay, className }: AudioPlayerProps) => {
-  const [isPlaying, setIsPlaying] = useState(false);
+const AudioPlayer = ({ 
+  isGenerating, 
+  isPlaying, 
+  onPlay, 
+  onPause, 
+  className 
+}: AudioPlayerProps) => {
+  const { toast } = useToast();
   
   const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
-    if (!isPlaying) {
-      onPlay();
+    if (isPlaying) {
+      onPause();
     } else {
-      window.speechSynthesis.cancel();
+      onPlay();
     }
   };
   
   const handleDownload = () => {
-    // In a real app, this would download the audio file
-    console.log('Download not implemented in this demo');
+    toast({
+      title: "Download not available",
+      description: "Audio download is not implemented in this demo version.",
+      variant: "default",
+    });
   };
 
   return (
-    <div className={cn("flex flex-col items-center gap-4 p-4", className)}>
-      <div className="audio-visualizer">
+    <div className={cn("flex items-center gap-4", className)}>
+      <div className="audio-visualizer flex items-end h-12 gap-1">
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
             className={cn(
-              "bar h-full",
-              isPlaying ? `bg-primary animate-wave-${i + 1}` : "bg-muted-foreground/30",
-              isGenerating && "animate-pulse-slow"
+              "w-2 bg-primary/80 rounded-full transition-all",
+              isPlaying 
+                ? `h-${Math.floor(Math.random() * 8) + 2} animate-pulse` 
+                : "h-2",
+              isGenerating && "animate-pulse"
             )}
+            style={{
+              height: isPlaying ? `${Math.floor(Math.random() * 24) + 8}px` : '8px',
+              animationDelay: `${i * 0.1}s`
+            }}
           />
         ))}
       </div>
